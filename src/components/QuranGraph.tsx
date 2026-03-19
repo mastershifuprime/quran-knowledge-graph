@@ -163,12 +163,14 @@ export default function QuranGraph() {
       .on("zoom", (event) => g.attr("transform", event.transform));
     svg.call(zoom);
 
-    // Adjust forces for mobile
+    // Adjust forces for mobile — tighter layout, centered
     const simulation = d3.forceSimulation<GraphNode>(graphData.nodes)
-      .force("link", d3.forceLink<GraphNode, GraphLink>(graphData.links).id((d) => d.id).distance(mobile ? 100 : 150).strength((d) => d.strength * 0.3))
-      .force("charge", d3.forceManyBody().strength(mobile ? -200 : -400))
+      .force("link", d3.forceLink<GraphNode, GraphLink>(graphData.links).id((d) => d.id).distance(mobile ? 70 : 150).strength((d) => d.strength * (mobile ? 0.5 : 0.3)))
+      .force("charge", d3.forceManyBody().strength(mobile ? -120 : -400))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide<GraphNode>().radius((d) => (mobile ? d.radius * 0.8 : d.radius) + 10));
+      .force("x", d3.forceX(width / 2).strength(mobile ? 0.15 : 0.05))
+      .force("y", d3.forceY(height / 2).strength(mobile ? 0.15 : 0.05))
+      .force("collision", d3.forceCollide<GraphNode>().radius((d) => (mobile ? d.radius * 0.65 : d.radius) + 8));
 
     const link = g.append("g").selectAll("line").data(graphData.links).enter().append("line")
       .attr("stroke", "#333")
@@ -192,7 +194,7 @@ export default function QuranGraph() {
     feMerge.append("feMergeNode").attr("in", "coloredBlur");
     feMerge.append("feMergeNode").attr("in", "SourceGraphic");
 
-    const nodeRadius = (d: GraphNode) => mobile ? d.radius * 0.7 : d.radius;
+    const nodeRadius = (d: GraphNode) => mobile ? d.radius * 0.55 : d.radius;
 
     nodeGroup.append("circle")
       .attr("r", nodeRadius)
@@ -244,8 +246,25 @@ export default function QuranGraph() {
       nodeGroup.attr("transform", (d) => `translate(${d.x},${d.y})`);
     });
 
-    // Fit to screen
-    svg.call(zoom.transform, d3.zoomIdentity.translate(0, 0).scale(mobile ? 0.6 : 0.85));
+    // Auto-fit: wait for simulation to settle, then zoom to fit all nodes
+    simulation.on("end", () => {
+      const xs = graphData.nodes.map((d) => d.x || 0);
+      const ys = graphData.nodes.map((d) => d.y || 0);
+      const maxR = Math.max(...graphData.nodes.map((d) => mobile ? d.radius * 0.65 : d.radius));
+      const minX = Math.min(...xs) - maxR - 30;
+      const maxX = Math.max(...xs) + maxR + 30;
+      const minY = Math.min(...ys) - maxR - 30;
+      const maxY = Math.max(...ys) + maxR + 30;
+      const graphW = maxX - minX;
+      const graphH = maxY - minY;
+      const scale = Math.min(width / graphW, height / graphH) * 0.9;
+      const tx = (width - graphW * scale) / 2 - minX * scale;
+      const ty = (height - graphH * scale) / 2 - minY * scale;
+      svg.transition().duration(800).call(
+        zoom.transform,
+        d3.zoomIdentity.translate(tx, ty).scale(scale)
+      );
+    });
 
     return () => { simulation.stop(); };
   }, [graphData, isMobile]);
