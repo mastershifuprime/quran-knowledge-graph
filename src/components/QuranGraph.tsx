@@ -283,38 +283,41 @@ export default function QuranGraph() {
       nodeGroup.attr("transform", (d) => `translate(${d.x},${d.y})`);
     });
 
-    // Auto-fit: zoom to fit all nodes with padding for header/pills
+    // Auto-fit: zoom to fill screen edge-to-edge
     const fitToScreen = () => {
       const xs = graphData.nodes.map((d) => d.x || 0);
       const ys = graphData.nodes.map((d) => d.y || 0);
-      const maxR = Math.max(...graphData.nodes.map((d) => d.radius * nodeScale)) + 20;
+      const maxR = Math.max(...graphData.nodes.map((d) => d.radius * nodeScale)) + 15;
       const minX = Math.min(...xs) - maxR;
       const maxX = Math.max(...xs) + maxR;
       const minY = Math.min(...ys) - maxR;
       const maxY = Math.max(...ys) + maxR;
       const graphW = maxX - minX;
       const graphH = maxY - minY;
-      // On mobile, account for header (40px top) and pills (40px bottom)
-      const padTop = mobile ? 40 : 0;
-      const padBottom = mobile ? 40 : 0;
+      // On mobile: tight fit with minimal padding
+      const padTop = mobile ? 30 : 0;
+      const padBottom = mobile ? 35 : 0;
+      const padSide = mobile ? 5 : 0;
+      const availW = width - padSide * 2;
       const availH = height - padTop - padBottom;
-      const scale = Math.min(width / graphW, availH / graphH) * (mobile ? 1.0 : 0.9);
-      const tx = (width - graphW * scale) / 2 - minX * scale;
+      const scale = Math.min(availW / graphW, availH / graphH);
+      const tx = padSide + (availW - graphW * scale) / 2 - minX * scale;
       const ty = padTop + (availH - graphH * scale) / 2 - minY * scale;
-      svg.transition().duration(800).call(
+      svg.transition().duration(600).call(
         zoom.transform,
         d3.zoomIdentity.translate(tx, ty).scale(scale)
       );
     };
     simulation.on("end", fitToScreen);
-    // Also fit after 2 seconds in case simulation is slow
-    setTimeout(fitToScreen, 2000);
+    // Fit at multiple stages in case simulation is slow
+    setTimeout(fitToScreen, 1500);
+    setTimeout(fitToScreen, 3000);
 
     return () => { simulation.stop(); };
   }, [graphData, isMobile]);
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden">
+    <div className="flex flex-col md:flex-row w-screen overflow-hidden app-height">
       {/* Graph area */}
       <div className="flex-1 relative min-h-0">
         {/* Header */}

@@ -15,6 +15,18 @@ body {
   color: var(--text-primary);
   font-family: 'Inter', system-ui, sans-serif;
   overflow: hidden;
+  /* Use dynamic viewport height for mobile browsers */
+  height: 100dvh;
+}
+
+html {
+  height: 100dvh;
+}
+
+/* Full height container that works with mobile browser chrome */
+.app-height {
+  height: 100vh;
+  height: 100dvh;
 }
 
 /* Arabic text styling */
