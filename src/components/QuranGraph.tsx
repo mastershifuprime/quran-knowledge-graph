@@ -294,11 +294,11 @@ export default function QuranGraph() {
       const maxY = Math.max(...ys) + maxR;
       const graphW = maxX - minX;
       const graphH = maxY - minY;
-      // On mobile, account for header (60px top) and pills (50px bottom)
-      const padTop = mobile ? 60 : 0;
-      const padBottom = mobile ? 50 : 0;
+      // On mobile, account for header (40px top) and pills (40px bottom)
+      const padTop = mobile ? 40 : 0;
+      const padBottom = mobile ? 40 : 0;
       const availH = height - padTop - padBottom;
-      const scale = Math.min(width / graphW, availH / graphH) * (mobile ? 0.95 : 0.9);
+      const scale = Math.min(width / graphW, availH / graphH) * (mobile ? 1.0 : 0.9);
       const tx = (width - graphW * scale) / 2 - minX * scale;
       const ty = padTop + (availH - graphH * scale) / 2 - minY * scale;
       svg.transition().duration(800).call(
@@ -318,24 +318,24 @@ export default function QuranGraph() {
       {/* Graph area */}
       <div className="flex-1 relative min-h-0">
         {/* Header */}
-        <div className="absolute top-3 left-3 z-10">
-          <h1 className="text-lg md:text-2xl font-bold mb-0.5">
+        <div className="absolute top-1 left-2 z-10 md:top-3 md:left-3">
+          <h1 className="text-sm md:text-2xl font-bold mb-0">
             <span className="text-[#adfa1d]">القرآن</span>{" "}
-            <span className="text-white">Knowledge Graph</span>
+            <span className="text-white text-xs md:text-2xl">Knowledge Graph</span>
           </h1>
-          <p className="text-xs md:text-sm text-gray-500">
+          <p className="text-[10px] md:text-sm text-gray-500">
             {topics.length} topics · {topics.reduce((s, t) => s + t.verses.length, 0)} verse connections
           </p>
         </div>
 
         {/* Search */}
-        <div className="absolute top-3 right-3 z-10 w-48 md:w-72">
+        <div className="absolute top-1 right-2 z-10 w-36 md:top-3 md:right-3 md:w-72">
           <input
             type="text"
             placeholder="Search topics..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-1.5 md:px-4 md:py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#adfa1d]"
+            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2 py-1 md:px-4 md:py-2 text-xs md:text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#adfa1d]"
           />
           {searchQuery && filteredTopics.length > 0 && (
             <div className="mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg max-h-48 md:max-h-60 overflow-y-auto">
@@ -354,17 +354,17 @@ export default function QuranGraph() {
           )}
         </div>
 
-        {/* Topic pills — scrollable on mobile */}
-        <div className="absolute bottom-2 left-0 right-0 z-10 px-3">
-          <div className="flex gap-1.5 md:gap-2 md:flex-wrap md:justify-center overflow-x-auto pb-1 scrollbar-hide">
+        {/* Topic pills — scrollable on mobile, wrap on desktop */}
+        <div className="absolute bottom-0 left-0 right-0 z-10 px-2 pb-1 md:px-3 md:pb-2 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent pt-4">
+          <div className="flex gap-1 md:gap-2 md:flex-wrap md:justify-center overflow-x-auto pb-1 scrollbar-hide">
             {topics.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setSelectedTopic(t)}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
+                className={`px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-full text-[9px] md:text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
                   selectedTopic?.id === t.id
-                    ? "ring-2 ring-offset-1 ring-offset-black"
-                    : "opacity-70 hover:opacity-100"
+                    ? "ring-1 md:ring-2 ring-offset-1 ring-offset-black opacity-100"
+                    : "opacity-60 hover:opacity-100"
                 }`}
                 style={{
                   backgroundColor: t.color + "22",
@@ -372,7 +372,7 @@ export default function QuranGraph() {
                   border: `1px solid ${t.color}44`,
                 }}
               >
-                {t.name} ({t.verses.length})
+                {isMobile ? t.name : `${t.name} (${t.verses.length})`}
               </button>
             ))}
           </div>
