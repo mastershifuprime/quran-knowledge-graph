@@ -96,12 +96,23 @@ export default function QuranGraph() {
   const verseLookup = useMemo(() => buildVerseLookup(), []);
   const graphData = useMemo(() => buildGraphData(), []);
 
-  // Detect mobile
+  const [fixedHeight, setFixedHeight] = useState(0);
+
+  // Detect mobile + capture initial height (before keyboard)
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    // Capture the full height on first load (before any keyboard opens)
+    setFixedHeight(window.innerHeight);
+    // Only update on orientation change, not keyboard resize
+    const onOrientationChange = () => {
+      setTimeout(() => {
+        setFixedHeight(window.innerHeight);
+        setIsMobile(window.innerWidth < 768);
+      }, 300);
+    };
+    window.addEventListener("orientationchange", onOrientationChange);
+    return () => window.removeEventListener("orientationchange", onOrientationChange);
   }, []);
 
   const versePanelRef = useRef<HTMLDivElement>(null);
@@ -172,20 +183,7 @@ export default function QuranGraph() {
   // Store fitToScreen ref so we can call it on resize
   const fitRef = useRef<(() => void) | null>(null);
 
-  // Re-fit graph when viewport resizes (keyboard open/close on mobile)
-  useEffect(() => {
-    const onResize = () => {
-      if (fitRef.current) setTimeout(() => fitRef.current?.(), 300);
-    };
-    window.addEventListener("resize", onResize);
-    // Also handle visualViewport resize (better for keyboard on iOS)
-    const vv = window.visualViewport;
-    if (vv) vv.addEventListener("resize", onResize);
-    return () => {
-      window.removeEventListener("resize", onResize);
-      if (vv) vv.removeEventListener("resize", onResize);
-    };
-  }, []);
+  // No resize listener needed — we use fixedHeight to prevent keyboard issues
 
   // D3 force graph
   useEffect(() => {
@@ -354,7 +352,10 @@ export default function QuranGraph() {
   }, [graphData, isMobile]);
 
   return (
-    <div className="flex flex-col md:flex-row w-screen overflow-hidden app-height">
+    <div
+      className="flex flex-col md:flex-row w-screen overflow-hidden"
+      style={{ height: fixedHeight ? `${fixedHeight}px` : '100dvh' }}
+    >
       {/* Graph area */}
       <div className="flex-1 relative min-h-0">
         {/* Header */}
@@ -375,7 +376,6 @@ export default function QuranGraph() {
             placeholder="Search topics..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onBlur={() => setTimeout(() => fitRef.current?.(), 500)}
             className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2 py-1 md:px-4 md:py-2 text-xs md:text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#adfa1d]"
           />
           {searchQuery && filteredTopics.length > 0 && (

@@ -10,17 +10,16 @@
   --accent: #adfa1d;
 }
 
-body {
+html, body {
   background: var(--bg-primary);
   color: var(--text-primary);
   font-family: 'Inter', system-ui, sans-serif;
   overflow: hidden;
-  /* Use dynamic viewport height for mobile browsers */
-  height: 100dvh;
-}
-
-html {
-  height: 100dvh;
+  height: 100%;
+  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
 }
 
 /* Full height container that works with mobile browser chrome */
