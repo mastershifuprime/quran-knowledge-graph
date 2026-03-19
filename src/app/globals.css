@@ -39,3 +39,15 @@ body {
 
 /* Graph node hover */
 .graph-node:hover { cursor: pointer; }
+
+/* Hide scrollbar for topic pills */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Safe area for mobile */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* Prevent body scroll when panel is open on mobile */
+body.panel-open { overflow: hidden; }
