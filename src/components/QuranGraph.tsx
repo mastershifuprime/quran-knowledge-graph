@@ -169,6 +169,24 @@ export default function QuranGraph() {
     });
   }, [searchQuery, verseLookup]);
 
+  // Store fitToScreen ref so we can call it on resize
+  const fitRef = useRef<(() => void) | null>(null);
+
+  // Re-fit graph when viewport resizes (keyboard open/close on mobile)
+  useEffect(() => {
+    const onResize = () => {
+      if (fitRef.current) setTimeout(() => fitRef.current?.(), 300);
+    };
+    window.addEventListener("resize", onResize);
+    // Also handle visualViewport resize (better for keyboard on iOS)
+    const vv = window.visualViewport;
+    if (vv) vv.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      if (vv) vv.removeEventListener("resize", onResize);
+    };
+  }, []);
+
   // D3 force graph
   useEffect(() => {
     if (!svgRef.current) return;
@@ -308,8 +326,27 @@ export default function QuranGraph() {
         d3.zoomIdentity.translate(tx, ty).scale(scale)
       );
     };
+    // Store for resize handler
+    fitRef.current = () => {
+      // Re-read dimensions in case viewport changed
+      const w = svgRef.current?.clientWidth || width;
+      const h = svgRef.current?.clientHeight || height;
+      const xs2 = graphData.nodes.map((d) => d.x || 0);
+      const ys2 = graphData.nodes.map((d) => d.y || 0);
+      const maxR2 = Math.max(...graphData.nodes.map((d) => d.radius * nodeScale)) + 15;
+      const gW = Math.max(...xs2) + maxR2 - (Math.min(...xs2) - maxR2);
+      const gH = Math.max(...ys2) + maxR2 - (Math.min(...ys2) - maxR2);
+      const mX = Math.min(...xs2) - maxR2;
+      const mY = Math.min(...ys2) - maxR2;
+      const pT = mobile ? 30 : 0, pB = mobile ? 35 : 0, pS = mobile ? 5 : 0;
+      const aW = w - pS * 2, aH = h - pT - pB;
+      const s = Math.min(aW / gW, aH / gH);
+      const tX = pS + (aW - gW * s) / 2 - mX * s;
+      const tY = pT + (aH - gH * s) / 2 - mY * s;
+      svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity.translate(tX, tY).scale(s));
+    };
+
     simulation.on("end", fitToScreen);
-    // Fit at multiple stages in case simulation is slow
     setTimeout(fitToScreen, 1500);
     setTimeout(fitToScreen, 3000);
 
@@ -338,6 +375,7 @@ export default function QuranGraph() {
             placeholder="Search topics..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onBlur={() => setTimeout(() => fitRef.current?.(), 500)}
             className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2 py-1 md:px-4 md:py-2 text-xs md:text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#adfa1d]"
           />
           {searchQuery && filteredTopics.length > 0 && (
