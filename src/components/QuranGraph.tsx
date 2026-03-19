@@ -104,14 +104,30 @@ export default function QuranGraph() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // When topic is selected, show panel
+  const versePanelRef = useRef<HTMLDivElement>(null);
+
+  // When topic is selected, show panel and scroll to top
   useEffect(() => {
-    if (selectedTopic) setShowPanel(true);
+    if (selectedTopic) {
+      setShowPanel(true);
+      // Scroll verse list to top when switching topics
+      setTimeout(() => {
+        if (versePanelRef.current) {
+          const scrollArea = versePanelRef.current.querySelector("[data-verse-list]");
+          if (scrollArea) scrollArea.scrollTop = 0;
+        }
+      }, 50);
+    }
   }, [selectedTopic]);
 
   const closePanel = () => {
     setShowPanel(false);
     setTimeout(() => setSelectedTopic(null), 300);
+  };
+
+  const switchTopic = (topicId: string) => {
+    const topic = topics.find((x) => x.id === topicId);
+    if (topic) setSelectedTopic(topic);
   };
 
   // Get verses for selected topic
@@ -346,6 +362,7 @@ export default function QuranGraph() {
           )}
 
           <div
+            ref={versePanelRef}
             className={`
               ${isMobile
                 ? `fixed bottom-0 left-0 right-0 z-40 rounded-t-2xl transition-transform duration-300 ${showPanel ? "translate-y-0" : "translate-y-full"}`
@@ -354,6 +371,7 @@ export default function QuranGraph() {
               bg-[#0f0f0f] flex flex-col
               ${isMobile ? "max-h-[85vh]" : "h-screen"}
             `}
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile drag handle */}
             {isMobile && (
@@ -386,8 +404,8 @@ export default function QuranGraph() {
                     {connectedTopics.slice(0, isMobile ? 5 : 8).map((t) => (
                       <button
                         key={t.id}
-                        onClick={() => setSelectedTopic(topics.find((x) => x.id === t.id)!)}
-                        className="px-2 py-0.5 rounded text-xs"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); switchTopic(t.id); }}
+                        className="px-2 py-0.5 rounded text-xs active:opacity-80"
                         style={{ backgroundColor: t.color + "22", color: t.color, border: `1px solid ${t.color}33` }}
                       >
                         {t.name} ({t.sharedCount})
@@ -399,7 +417,7 @@ export default function QuranGraph() {
             </div>
 
             {/* Verses list */}
-            <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4 overscroll-contain">
+            <div data-verse-list className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4 overscroll-contain">
               {selectedVerses.map((verse) => (
                 <div
                   key={verse.ref}
