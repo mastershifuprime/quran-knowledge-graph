@@ -154,12 +154,20 @@ export default function QuranGraph() {
       .sort((a, b) => b.sharedCount - a.sharedCount);
   }, [selectedTopic]);
 
-  // Filter topics by search
+  // Filter topics by search — matches topic name AND verse text
   const filteredTopics = useMemo(() => {
     if (!searchQuery) return topics;
     const q = searchQuery.toLowerCase();
-    return topics.filter((t) => t.name.includes(q) || t.nameEn.toLowerCase().includes(q) || t.nameAr.includes(q));
-  }, [searchQuery]);
+    return topics.filter((t) => {
+      // Match topic name (Bengali, English, Arabic)
+      if (t.name.includes(q) || t.nameEn.toLowerCase().includes(q) || t.nameAr.includes(q)) return true;
+      // Also match if any verse translation contains the query
+      return t.verses.some((ref) => {
+        const data = verseLookup.get(ref);
+        return data && (data.bangla.includes(searchQuery) || data.arabic.includes(searchQuery));
+      });
+    });
+  }, [searchQuery, verseLookup]);
 
   // D3 force graph
   useEffect(() => {
