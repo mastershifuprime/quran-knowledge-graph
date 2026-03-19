@@ -187,19 +187,20 @@ export default function QuranGraph() {
       .on("zoom", (event) => g.attr("transform", event.transform));
     svg.call(zoom);
 
-    // Adjust forces for mobile — tighter layout, centered
+    // Adjust forces for mobile — fill screen, no dead space
+    const nodeScale = mobile ? 0.45 : 1;
     const simulation = d3.forceSimulation<GraphNode>(graphData.nodes)
-      .force("link", d3.forceLink<GraphNode, GraphLink>(graphData.links).id((d) => d.id).distance(mobile ? 70 : 150).strength((d) => d.strength * (mobile ? 0.5 : 0.3)))
-      .force("charge", d3.forceManyBody().strength(mobile ? -120 : -400))
+      .force("link", d3.forceLink<GraphNode, GraphLink>(graphData.links).id((d) => d.id).distance(mobile ? 50 : 150).strength((d) => d.strength * (mobile ? 0.6 : 0.3)))
+      .force("charge", d3.forceManyBody().strength(mobile ? -80 : -400))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("x", d3.forceX(width / 2).strength(mobile ? 0.15 : 0.05))
-      .force("y", d3.forceY(height / 2).strength(mobile ? 0.15 : 0.05))
-      .force("collision", d3.forceCollide<GraphNode>().radius((d) => (mobile ? d.radius * 0.65 : d.radius) + 8));
+      .force("x", d3.forceX(width / 2).strength(mobile ? 0.2 : 0.05))
+      .force("y", d3.forceY(height / 2).strength(mobile ? 0.2 : 0.05))
+      .force("collision", d3.forceCollide<GraphNode>().radius((d) => d.radius * nodeScale + 6));
 
     const link = g.append("g").selectAll("line").data(graphData.links).enter().append("line")
       .attr("stroke", "#333")
-      .attr("stroke-width", (d) => Math.max(1, d.sharedCount / 5))
-      .attr("stroke-opacity", 0.4);
+      .attr("stroke-width", (d) => mobile ? Math.max(0.5, d.sharedCount / 10) : Math.max(1, d.sharedCount / 5))
+      .attr("stroke-opacity", mobile ? 0.25 : 0.4);
 
     const nodeGroup = g.append("g").selectAll("g").data(graphData.nodes).enter().append("g")
       .attr("class", "graph-node")
@@ -218,7 +219,7 @@ export default function QuranGraph() {
     feMerge.append("feMergeNode").attr("in", "coloredBlur");
     feMerge.append("feMergeNode").attr("in", "SourceGraphic");
 
-    const nodeRadius = (d: GraphNode) => mobile ? d.radius * 0.55 : d.radius;
+    const nodeRadius = (d: GraphNode) => d.radius * nodeScale;
 
     nodeGroup.append("circle")
       .attr("r", nodeRadius)
@@ -243,23 +244,35 @@ export default function QuranGraph() {
         if (topic) setSelectedTopic(topic);
       });
 
-    // Labels
-    nodeGroup.append("text")
-      .text((d) => d.name)
-      .attr("text-anchor", "middle")
-      .attr("dy", (d) => nodeRadius(d) + 14)
-      .attr("fill", "#ccc")
-      .attr("font-size", mobile ? "10px" : "12px")
-      .attr("font-weight", "500")
-      .attr("pointer-events", "none");
+    // Labels — on mobile show abbreviated, on desktop show full
+    if (!mobile) {
+      nodeGroup.append("text")
+        .text((d) => d.name)
+        .attr("text-anchor", "middle")
+        .attr("dy", (d) => nodeRadius(d) + 16)
+        .attr("fill", "#ccc")
+        .attr("font-size", "12px")
+        .attr("font-weight", "500")
+        .attr("pointer-events", "none");
+    } else {
+      // On mobile: show short label below node
+      nodeGroup.append("text")
+        .text((d) => d.name.length > 6 ? d.name.slice(0, 5) + "…" : d.name)
+        .attr("text-anchor", "middle")
+        .attr("dy", (d) => nodeRadius(d) + 10)
+        .attr("fill", "#aaa")
+        .attr("font-size", "7px")
+        .attr("font-weight", "500")
+        .attr("pointer-events", "none");
+    }
 
-    // Verse count
+    // Verse count inside node
     nodeGroup.append("text")
       .text((d) => d.verseCount.toString())
       .attr("text-anchor", "middle")
-      .attr("dy", "4px")
+      .attr("dy", mobile ? "3px" : "5px")
       .attr("fill", (d) => d.color)
-      .attr("font-size", mobile ? "11px" : "14px")
+      .attr("font-size", mobile ? "8px" : "14px")
       .attr("font-weight", "700")
       .attr("pointer-events", "none");
 
@@ -270,25 +283,32 @@ export default function QuranGraph() {
       nodeGroup.attr("transform", (d) => `translate(${d.x},${d.y})`);
     });
 
-    // Auto-fit: wait for simulation to settle, then zoom to fit all nodes
-    simulation.on("end", () => {
+    // Auto-fit: zoom to fit all nodes with padding for header/pills
+    const fitToScreen = () => {
       const xs = graphData.nodes.map((d) => d.x || 0);
       const ys = graphData.nodes.map((d) => d.y || 0);
-      const maxR = Math.max(...graphData.nodes.map((d) => mobile ? d.radius * 0.65 : d.radius));
-      const minX = Math.min(...xs) - maxR - 30;
-      const maxX = Math.max(...xs) + maxR + 30;
-      const minY = Math.min(...ys) - maxR - 30;
-      const maxY = Math.max(...ys) + maxR + 30;
+      const maxR = Math.max(...graphData.nodes.map((d) => d.radius * nodeScale)) + 20;
+      const minX = Math.min(...xs) - maxR;
+      const maxX = Math.max(...xs) + maxR;
+      const minY = Math.min(...ys) - maxR;
+      const maxY = Math.max(...ys) + maxR;
       const graphW = maxX - minX;
       const graphH = maxY - minY;
-      const scale = Math.min(width / graphW, height / graphH) * 0.9;
+      // On mobile, account for header (60px top) and pills (50px bottom)
+      const padTop = mobile ? 60 : 0;
+      const padBottom = mobile ? 50 : 0;
+      const availH = height - padTop - padBottom;
+      const scale = Math.min(width / graphW, availH / graphH) * (mobile ? 0.95 : 0.9);
       const tx = (width - graphW * scale) / 2 - minX * scale;
-      const ty = (height - graphH * scale) / 2 - minY * scale;
+      const ty = padTop + (availH - graphH * scale) / 2 - minY * scale;
       svg.transition().duration(800).call(
         zoom.transform,
         d3.zoomIdentity.translate(tx, ty).scale(scale)
       );
-    });
+    };
+    simulation.on("end", fitToScreen);
+    // Also fit after 2 seconds in case simulation is slow
+    setTimeout(fitToScreen, 2000);
 
     return () => { simulation.stop(); };
   }, [graphData, isMobile]);
